@@ -1,14 +1,22 @@
-assignment_1-homework-1
-Ramona Walch (ramonamaria.walch01@estudiant.upf.edu)
-date: "Last update: `r format(Sys.time(), '%d %B, %Y')`"      
+---
+title: "Proteomic and Metabolomic Characterization of COVID-19 Patient Sera"
+subtitle: "Assignment 1 – Data Wrangling & Exploratory Data Analysis"
+author: "Ramona Maria Walch (ramonamaria.walch01@estudiant.upf.edu)"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
 output:
   html_document:
     toc: true
+    toc_float: true
+    number_sections: true
+    theme: cosmo
+    highlight: tango
+    code_folding: hide
     fig_caption: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                      fig.align = "center", comment = "")
 ```
 
 
@@ -19,17 +27,11 @@ We will work with the publication [**Proteomic and Metabolomic Characterization 
 
 # Introduction
 
-This report presents a computational analysis based on the publication *"Proteomic and Metabolomic Characterization of COVID-19 Patient Sera"* (Shen et al., 2020). The study provides a comprehensive landscape of blood serum proteomes and metabolomes, aiming to identify potential biomarkers for disease severity.
-
-The dataset consists of **118 individuals** categorized into four groups: Healthy Controls, Non-COVID-19 patients, Non-severe COVID-19, and Severe COVID-19 cases.
-
-The primary objectives of this practical assignment are:
-
-1.  **Data Wrangling & Imputation:** To clean clinical data and address missing values using **Multiple Imputation by Chained Equations (MICE)** to ensure robust statistical comparisons.
-2.  **Reproduction of Results:** To reconstruct **Table 1** (Demographics) and **Supplementary Figure 1** (Biomarkers) from the original manuscript to validate the data processing pipeline.
-3.  **Refined Statistical Handling:** To critically assess outliers in inflammatory markers and apply **log-transformation** as a robust alternative to data removal.
-4.  **Multivariate Analysis:** To visualize patient stratification and biomarker profiles using **hierarchical clustering (Heatmaps)** annotated by disease severity and sex.
-
+This report analyzes the dataset from Shen et al. (2020), comprising **118 individuals** 
+across four groups (Healthy Controls, Non-COVID-19, Non-severe, Severe COVID-19). 
+The analysis covers data wrangling with **MICE** imputation, reproduction of Table 1 
+and Supplementary Figure 1, outlier handling via **log-transformation**, 
+and **hierarchical clustering** for patient stratification.
 
 # Exercise 1  
 
@@ -42,7 +44,7 @@ Reproduce Table 1 from the manuscript using the supplementary data. Match the re
 Briefly discuss any discrepancies between your results and the published table, and provide possible explanations.
 
 
-```{r plot_biomarkers, warning=FALSE, message=FALSE}
+```{r plot_biomarkers, warning=FALSE, message=FALSE, echo=FALSE}
 
 ## Exercise 1.1
 # Reproduce Table 1 from the manuscript using the supplementary data.
@@ -53,33 +55,26 @@ Briefly discuss any discrepancies between your results and the published table, 
 if (!require("pacman")) install.packages("pacman")
 
 pacman::p_load(
-  tidyverse,      # includes: ggplot2, purrr, dplyr, readr, etc.
-  readxl, 
-  janitor, 
-  httr, 
-  knitr, 
-  flextable, 
-  mice, 
-  naniar, 
-  ggpubr, 
-  pheatmap, 
-  RColorBrewer,
-  dendextend
+  readxl, tidyverse, janitor, httr,
+  knitr, flextable, mice, naniar,
+  ggpubr, pheatmap, RColorBrewer, dendextend
 )
 
 theme_set(theme_classic())
+
 
  
 # 2. DATA DOWNLOAD & IMPORT 
 url <- "https://ars.els-cdn.com/content/image/1-s2.0-S0092867420306279-mmc1.xlsx"
 original_file <- tempfile(fileext = ".xlsx")
 
-GET(url, write_disk(original_file, overwrite = TRUE))
+invisible(GET(url, write_disk(original_file, overwrite = TRUE)))
 
 raw_data <- read_excel(original_file, sheet = 2, na = c("", "NA", "/"))
 
  
 # 3. DATA CLEANING & LOGIC 
+
 clean_data <- janitor::clean_names(raw_data, replace = c("\u03bc" = "micro"))
 
 date_vars <- c("admission_date", "onset_date_f", "date_of_progression_to_severe_state")
@@ -170,7 +165,7 @@ data_for_mice <- clean_data %>%
   mutate(across(-any_of(c("sex", "group")), 
   as.numeric))
 
-glimpse(data_for_mice)
+#glimpse(data_for_mice)
 
 # 3. Run MICE
 # m=5: We create 5 imputed datasets (recommended minimum)
@@ -318,14 +313,11 @@ ft
 
 
 ```
-##Discussion of Discrepancies:
 
-Our Table 1 reproduction closely mirrors the published demographics 
-(Age median: 47 years overall; Severe 55 vs. Non-severe 43 years, p<0.001). 
-Sex distribution aligns with published (65% male overall). Minor differences 
-in Non-severe group (23 vs. 25 males) likely reflect MICE imputation methodology. 
-Time metrics (Onset→Admission, Admission→Severe) match published structure. 
-Overall, demographics are faithfully reproduced.
+
+## Discussion of Discrepancies
+
+Results closely match the published Table 1: age (Severe median 55 vs. Non-severe 43 years), sex distribution (65% male), and time metrics are faithfully reproduced. Minor deviations in group counts likely reflect MICE imputation.
 
 
 ## Exercise 1.2
@@ -336,7 +328,7 @@ Perform an exploratory data analysis (EDA) of the dataset. At a minimum, include
 - A brief written summary of notable patterns, anomalies, or data quality issues  
 
 
-```{r warning=FALSE, message=FALSE}
+```{r warning=FALSE, message=FALSE, echo=FALSE}
  
 # 1. LOAD CLEAN DATA (  
 # We use 'clean_data' from Exercise 1.1. 
@@ -347,11 +339,23 @@ Perform an exploratory data analysis (EDA) of the dataset. At a minimum, include
 
 # Continuous variables
 summary(clean_data %>% select(age_year, bmi_h))
+```
+Age ranges from 18 to 77 years (median 47), while BMI is normally distributed around a mean of 24.5 kg/m² with 8 missing values, indicating a generally non-obese cohort.
+
+``` {r warning=FALSE, message=FALSE, echo=FALSE}
 
 # Categorical variables
 clean_data %>% count(group)
-clean_data %>% count(sex)
+```
+The dataset is approximately balanced across the four groups, with Non-severe slightly overrepresented (n=37) compared to Healthy Controls, Non-COVID-19, and Severe (each n=25–28).
 
+``` {r warning=FALSE, message=FALSE, echo=FALSE}
+
+clean_data %>% count(sex)
+```
+Males outnumber females nearly 2:1 (77 vs. 41), consistent with the published demographic profile of 65% male.
+
+``` {r warning=FALSE, message=FALSE, echo=FALSE}
 
 # 3. MISSING DATA EXPLORATION
 
@@ -368,6 +372,11 @@ kable(
   missing_df,
   caption = "Variables with Missing Data (%)"
 )
+
+```
+Missing data is concentrated in time-related variables (>44%) and clinical biomarkers (~24%), with the highest missingness in administrative identifiers; most biomarker missingness is systematic, likely reflecting that only COVID-19 patients had certain measurements taken.
+
+``` {r warning=FALSE, message=FALSE, echo=FALSE}
 
 gg_miss_var(clean_data, show_pct = TRUE) +
   labs(title = "Percentage of Missing Values by Variable")
@@ -386,10 +395,17 @@ ggplot(clean_data, aes(x = bmi_h)) +
 # Anova
 age_test <- aov(age_year ~ group, data = clean_data)
 summary(age_test)
+```
+One-way ANOVA reveals a significant age difference across groups (F=5.99, p<0.001), confirming that disease severity is associated with older age.
+
+``` {r warning=FALSE, message=FALSE, echo=FALSE}
 
 #BMI comparison across groups
 bmi_test <- aov(bmi_h ~ group, data = clean_data)
 summary(bmi_test)
+```
+BMI does not differ significantly across groups (F=1.90, p=0.134), though 8 observations were excluded due to missing BMI values.
+``` {r warning=FALSE, message=FALSE, echo=FALSE}
 
 #Given the small group sizes and potential non-normality, results should be interpreted cautiously.
 
@@ -397,7 +413,9 @@ summary(bmi_test)
 # Post-hoc test to see which groups differ
 bmi_posthoc <- TukeyHSD(bmi_test)
 print(bmi_posthoc)
-
+```
+BMI does not differ significantly across groups (F=1.90, p=0.134), and Tukey post-hoc tests confirm no pairwise differences, suggesting BMI is not a severity-associated variable in this cohort.
+``` {r warning=FALSE, message=FALSE, echo=FALSE}
 # 5. GROUP COMPARISONS
 
 
@@ -457,7 +475,7 @@ analyses.
 Reproduce Supplementary Figure 1 using the data without modifying or removing any observations. Use the same variables and groupings as in the original figure. 
 
 
-```{r warning=FALSE}
+```{r warning=FALSE, message=FALSE, echo=FALSE}
 # 1. LOAD CLEAN DATA  
 
 # We use 'clean_data' from Exercise 1.1. 
@@ -622,7 +640,7 @@ Identify and handle outliers using an appropriate and well-justified method (e.g
 
 Reproduce Supplementary Figure 1 after outlier handling and discuss how and why the results change.
 
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 # 1. LOAD RAW DATA (SUPPLEMENTARY FILE)
 
 # We use 'clean_data' from Exercise 1.1. 
@@ -701,7 +719,7 @@ detect_outliers <- function(x) {
 }
 
 
-outlier_raw <- clean_data %>%
+ outlier_raw <- clean_data %>%
   select(all_of(log_transform_vars)) %>%
   summarise(across(everything(), 
     ~ sum(. > quantile(., 0.75, na.rm = TRUE) + 1.5 * IQR(., na.rm = TRUE), 
@@ -710,9 +728,9 @@ outlier_raw <- clean_data %>%
   pivot_longer(everything(), names_to = "Biomarker", values_to = "Outlier_Count") %>%
   mutate(Biomarker = recode(Biomarker, !!!biomarker_map))
 
-print(outlier_raw)  # Zeigt: "CRP" hat 3 Outlier, "WBC" hat 5 Outlier, etc.
+#print(outlier_raw)  # Zeigt: "CRP" hat 3 Outlier, "WBC" hat 5 Outlier, etc.
 
-# Visualisierung (NICHT Boxplot!):
+# Visualisation:
 ggplot(outlier_raw, aes(x = reorder(Biomarker, Outlier_Count), y = Outlier_Count)) +
   geom_col(fill = "steelblue") +
   coord_flip() +
@@ -721,6 +739,10 @@ ggplot(outlier_raw, aes(x = reorder(Biomarker, Outlier_Count), y = Outlier_Count
 
 
 print(outlier_raw %>% arrange(desc(Outlier_Count)))
+```
+AST (12) and CRP (9) show the highest outlier counts, reflecting extreme inflammatory values in Severe patients, while Monocyte (1) and Lymphocyte (2) are barely affected.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
 # Normality test (Shapiro-Wilk Test)
 
@@ -742,17 +764,29 @@ normality_raw <- clean_data %>%
 
 print(normality_raw %>% select(Biomarker, Shapiro_p, Normal))
 
+```
+All 11 biomarkers deviate significantly from normality (all p<0.05), justifying transformation prior to parametric testing.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+
 # 3b. OUTLIER HANDLING: LOG-TRANSFORMATION
+
+# Outlier counts VOR der Transformation
+outlier_counts <- clean_data %>%
+  select(all_of(log_transform_vars)) %>%
+  summarise(across(everything(), 
+    ~ sum(. > quantile(., 0.75, na.rm = TRUE) + 1.5 * IQR(., na.rm = TRUE), 
+          na.rm = TRUE)
+  ))
+
+
 # Apply log10 transformation to selected biomarkers
-clean_data <- clean_data %>%
-  mutate(across(all_of(log_transform_vars),
-              ~ log10(.x + 1)))
-
-
+clean_data_transformed <- clean_data %>%
+  mutate(across(all_of(log_transform_vars), ~ log10(.x + 1)))
 
 # 4. PREPARE LONG FORMAT
-
-fig_long <- clean_data %>%
+fig_long <- clean_data_transformed %>%  # <-- GEÄNDERT
   select(group, any_of(names(biomarker_map))) %>%
   pivot_longer(
     cols = -group,
@@ -805,15 +839,6 @@ compute_signif <- function(df, var) {
 
 signif_df <- map_dfr(levels(fig_long$variable), ~ compute_signif(fig_long, .x))
 
-# Outlier quantification!
-outlier_counts <- clean_data %>%
-  select(all_of(log_transform_vars)) %>%
-  summarise(across(everything(), 
-    ~ sum(
-        . > quantile(., 0.75, na.rm = TRUE) + 1.5 * IQR(., na.rm = TRUE), 
-        na.rm = TRUE
-      )
-  ))
 
 # 6. PLOT
 
@@ -864,6 +889,9 @@ ggplot(fig_long, aes(x = group, y = value)) +
     title = "Supplementary Figure 1. Clinical laboratory parameters by disease severity"
   )
 
+
+
+
 # We count outliers again after the Transformation
 
 outlier_counts_long <- outlier_counts %>%
@@ -872,9 +900,13 @@ outlier_counts_long <- outlier_counts %>%
 
 outlier_transformed_long <- clean_data %>%
   select(all_of(log_transform_vars)) %>%
-  summarise(across(everything(), detect_outliers)) %>%
+  summarise(across(everything(), 
+    ~ sum(. > quantile(., 0.75, na.rm = TRUE) + 1.5 * IQR(., na.rm = TRUE), 
+          na.rm = TRUE)
+  )) %>%
   pivot_longer(everything(), names_to = "Biomarker", values_to = "Log_Count") %>%
   mutate(Biomarker = recode(Biomarker, !!!biomarker_map))
+
 
 comparison_outliers <- outlier_counts_long %>%
   left_join(outlier_transformed_long, by = "Biomarker") %>%
@@ -906,7 +938,7 @@ p1 + p2
 
 
 # After Transformation - Shapiro-Test
-normality_transformed <- clean_data %>%  # Nach log-transformation
+normality_transformed <- clean_data_transformed %>%  # after log-transformation
   select(all_of(log_transform_vars)) %>%
   pivot_longer(everything(), names_to = "Biomarker", values_to = "Value") %>%
   group_by(Biomarker) %>%
@@ -929,25 +961,12 @@ cat("Biomarkers improved to normality:", sum(improvement$Improved))
 ```
 
 Discussion of Outlier Handling:
-
-
-Raw data contained 66 outliers (IQR method) concentrated in inflammatory 
-markers (AST 12, CRP 9, Glucose 8, WBC 7). All 11 biomarkers violated 
-normality (Shapiro-Wilk p<0.05). Log₁₀(x+1) transformation improved 
-normality in 3 biomarkers (ALT, Creatinine, Glucose now p>0.05), 
-substantively reducing skewness while preserving all patient observations. 
-Although outliers persisted in some biomarkers (e.g., AST: 12→7 outliers), 
-the transformation stabilized variance and enabled valid parametric testing 
-for the majority of biomarkers. Retention of outliers was justified as 
-biologically meaningful (CRP >100 mg/L, AST >200 U/L) indicators of severe 
-systemic inflammation, not measurement artifacts. This approach aligns with 
-clinical biomarker analysis standards.
+Raw data contained 66 outliers (IQR method); all 11 biomarkers violated normality (Shapiro-Wilk p<0.05). Log₁₀(x+1) transformation was applied uniformly to ensure comparable visualization scales, improving outlier counts for 7 variables (e.g., CRP: 9→0) but worsening 4 (e.g., Creatinine: 4→6). This trade-off prioritizes visual comparability; selective transformation would be preferable for inferential analysis. All observations retained as biologically meaningful.
 
 # Exercise 3
 Create a heatmap of the biomarker data. Include group and gender as annotation variables.
 
-```{r exercise3_heatmap_mice, fig.width=10, fig.height=8, warning=FALSE, message=FALSE}
-
+```{r fig.width=10, fig.height=8, warning=FALSE, message=FALSE, echo=FALSE}
 # 1. PREPARE DATA (Use MICE Data)
 
 # IMPORTANT: We use 'clean_mice_data' (complete dataset, n=118) from Exercise 1.1.
@@ -1065,8 +1084,6 @@ print(cluster_data)
 cat("Heatmap created using MICE imputed data to preserve full cohort size.\n")
 cat("Total patients included:", nrow(heatmap_data), "\n")
 
-
-
 ```
 
 Hierarchical clustering (Ward linkage, k=3) identified three patient clusters:
@@ -1114,6 +1131,6 @@ Analysis of 90 COVID-19 patients across three severity groups revealed:
 
 # session info {.unnumbered}
 
-```{r, results='asis',  echo=FALSE, message=FALSE }
+```{r, results='asis', echo=FALSE, message=FALSE }
 sessionInfo()
 ```
